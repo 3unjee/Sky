@@ -794,6 +794,9 @@ void WBackendVlcPrivate::init()
     frameUpdated = false;
     frameFreeze  = false;
 
+    seeking     = false;
+    seekPending = -1;
+
     length = 0;
 
     // FIXME VLC: This forces our default volume instead of the saved one.
@@ -1487,9 +1490,32 @@ void WBackendVlcPrivate::updateLoading()
 
 //-------------------------------------------------------------------------------------------------
 
+// NOTE: VLC is done with the seek it had, so the last one asked meanwhile goes.
+void WBackendVlcPrivate::applySeek()
+{
+    if (seeking == false) return;
+
+    seeking = false;
+
+    if (seekPending == -1) return;
+
+    Q_Q(WBackendVlc);
+
+    int msec = seekPending;
+
+    seekPending = -1;
+
+    q->backendSeek(msec);
+}
+
+//-------------------------------------------------------------------------------------------------
+
 void WBackendVlcPrivate::clearPlayer()
 {
     playing = false;
+
+    seeking     = false;
+    seekPending = -1;
 
     length = 0;
 
@@ -2014,6 +2040,19 @@ WBackendVlc::WBackendVlc(QObject * parent) : WAbstractBackend(new WBackendVlcPri
 /* virtual */ void WBackendVlc::backendSeek(int msec)
 {
     Q_D(WBackendVlc);
+
+    // NOTE: VLC takes one seek at a time: a seek asked while it is still on the previous one
+    //       waits, and only the last of them goes once it is done. Otherwise they pile up in
+    //       its input queue, which overflows on a slow stream, and the player freezes until it
+    //       has gone through all of them.
+    if (d->seeking)
+    {
+        d->seekPending = msec;
+
+        return;
+    }
+
+    d->seeking = true;
 
     d->player->seek(msec);
 
@@ -2637,6 +2676,9 @@ WBackendVlc::WBackendVlc(QObject * parent) : WAbstractBackend(new WBackendVlcPri
 
         int progress = eventPlayer->value.toInt();
 
+        // NOTE: A seek ends with its buffering.
+        if (progress == 100) d->applySeek();
+
         // NOTE: When playing a hub, we want to avoid buffering while restarting the video.
         if (d->loop) return true;
 
@@ -2706,6 +2748,10 @@ WBackendVlc::WBackendVlc(QObject * parent) : WAbstractBackend(new WBackendVlcPri
         int time = eventPlayer->value.toInt();
 
         setCurrentTime(time);
+
+        // NOTE: VLC says the time once it has taken a seek, the buffering event does not always
+        //       come.
+        d->applySeek();
 
         if (time > d->length && d->live == false)
         {

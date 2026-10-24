@@ -267,6 +267,8 @@ public: // Functions
 
     void updateLoading();
 
+    void applySeek();
+
     void clearPlayer();
     void clearActive();
 
@@ -343,6 +345,9 @@ public: // Variables
     bool started;
     bool active;
     bool playing;
+
+    bool seeking;
+    int  seekPending;
 
     bool frameReset;
     bool frameUpdated;
