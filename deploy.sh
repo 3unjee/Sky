@@ -22,6 +22,8 @@ SSL_versionC="3.5.3"
 VLC3_version="3.0.23"
 VLC4_version="4.0.0"
 
+FFmpeg_version="N-127021-ge0c94b2d1c"
+
 libtorrent_version="2.0.11"
 
 Boost_version="1.86.0"
@@ -258,6 +260,8 @@ if [ $vlc = "vlc3" ]; then
 else
     VLC="$external/VLC/$VLC4_version"
 fi
+
+FFmpeg="$external/FFmpeg/$FFmpeg_version"
 
 libtorrent="$external/libtorrent/$libtorrent_version"
 
@@ -900,6 +904,27 @@ elif [ $1 = "android" ]; then
     copyAndroid "$VLC" $vlc
 
     cp "$VLC"/*.jar $vlc
+fi
+
+#--------------------------------------------------------------------------------------------------
+# FFmpeg
+#--------------------------------------------------------------------------------------------------
+
+# NOTE: Our FFmpeg is for Qt 6 on the platforms it has a build for, the others stay on VLC. Its
+#       libraries have other names than the ones of Qt Multimedia, both load side by side.
+if [ $qt = "qt6" -a -d "$FFmpeg" ]; then
+
+    echo "COPYING FFmpeg"
+
+    for name in avcodec avfilter avformat avutil swresample swscale; do
+
+        if [ $os = "windows" ]; then
+
+            cp "$FFmpeg"/bin/$name-*.dll $deploy
+        else
+            cp "$FFmpeg"/lib/lib$name.so* $deploy
+        fi
+    done
 fi
 
 #--------------------------------------------------------------------------------------------------

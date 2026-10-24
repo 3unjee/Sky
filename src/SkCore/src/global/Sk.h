@@ -134,6 +134,11 @@ W_DECLARE_PRIVATE_COPY(Class)    \
 #define SK_NO_TORRENTENGINE
 #endif
 
+#ifdef SK_NO_FFMPEG
+#define SK_NO_BACKENDFFMPEG
+#define SK_NO_FFMPEGPLAYER
+#endif
+
 //-------------------------------------------------------------------------------------------------
 
 /**

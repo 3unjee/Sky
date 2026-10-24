@@ -31,10 +31,10 @@
 #include <WControllerPlaylist>
 #include <WControllerMedia>
 #include <WBackendVlc>
+#ifndef SK_NO_BACKENDFFMPEG
+#include <WBackendFfmpeg>
+#endif
 #include <WAbstractHook>
-
-// Private includes
-#include <private/WBackendVlc_p>
 
 //-------------------------------------------------------------------------------------------------
 // Static variables
@@ -71,9 +71,11 @@ void WBackendManagerPrivate::init()
 {
     Q_Q(WBackendManager);
 
+    engine = WBackendManager::EngineVlc;
+
     WBackendManagerItem item;
 
-    backend = new WBackendVlc(q);
+    backend = createBackend();
 
     item.backend = backend;
     item.hook    = NULL;
@@ -130,6 +132,22 @@ void WBackendManagerPrivate::init()
 
 //-------------------------------------------------------------------------------------------------
 // Private functions
+//-------------------------------------------------------------------------------------------------
+
+WAbstractBackend * WBackendManagerPrivate::createBackend()
+{
+    Q_Q(WBackendManager);
+
+#ifndef SK_NO_BACKENDFFMPEG
+    if (engine == WBackendManager::EngineFfmpeg)
+    {
+        return new WBackendFfmpeg(q);
+    }
+#endif
+
+    return new WBackendVlc(q);
+}
+
 //-------------------------------------------------------------------------------------------------
 
 void WBackendManagerPrivate::loadSources(bool play)
@@ -717,13 +735,21 @@ void WBackendManagerPrivate::disconnectBackend()
     QObject::connect(backend, SIGNAL(outputRemoved(int)), q, SLOT(onOutputRemoved(int)));
 }
 
-/*void WBackendManagerPrivate::setBackend(WAbstractBackend * backendNew)
+// NOTE: The new backend takes the settings of the manager, and a hook of its own.
+void WBackendManagerPrivate::setBackend(WAbstractBackend * backendNew)
 {
-    if (backend == backendNew) return;
-
     Q_Q(WBackendManager);
 
-    if (backend) QObject::disconnect(backend, 0, q, 0);
+    WAbstractBackend * backendOld = backend;
+
+    QObject::disconnect(backendOld, 0, q, 0);
+
+    foreach (const WBackendOutput * output, outputs)
+    {
+        q->removeOutput(output);
+    }
+
+    outputs.clear();
 
     backend = backendNew;
 
@@ -735,8 +761,9 @@ void WBackendManagerPrivate::disconnectBackend()
 
     backend->setSpeed(speed);
 
-    backend->setOutput (output);
-    backend->setQuality(quality);
+    backend->setOutput    (output);
+    backend->setQuality   (quality);
+    backend->setSourceMode(mode);
 
     backend->setFillMode(fillMode);
 
@@ -744,7 +771,27 @@ void WBackendManagerPrivate::disconnectBackend()
     backend->setTrackAudio(trackAudio);
 
     backend->setSize(size);
-}*/
+
+    QObject::connect(backend, SIGNAL(outputAdded(const WBackendOutput &)),
+                     q,       SLOT(onOutputAdded(const WBackendOutput &)));
+
+    QObject::connect(backend, SIGNAL(outputRemoved(int)), q, SLOT(onOutputRemoved(int)));
+
+    WBackendManagerItem & item = items.first();
+
+    item.backend = backend;
+
+    if (item.hook)
+    {
+        delete item.hook;
+
+        item.hook = q->createHook(backend);
+    }
+
+    backendInterface = backend;
+
+    backendOld->deleteBackend();
+}
 
 //-------------------------------------------------------------------------------------------------
 
@@ -1214,7 +1261,9 @@ WBackendManager::WBackendManager(WBackendManagerPrivate * p, QObject * parent)
 
 /* virtual */ WBackendNode * WBackendManager::backendCreateNode() const
 {
-    return new WBackendVlcNode;
+    Q_D(const WBackendManager);
+
+    return d->backend->createNode();
 }
 
 #endif
@@ -1687,6 +1736,35 @@ WBackendManager::WBackendManager(WBackendManagerPrivate * p, QObject * parent)
 
         d->reloadSources(isPlaying());
     }
+}
+
+//-------------------------------------------------------------------------------------------------
+// Properties
+//-------------------------------------------------------------------------------------------------
+
+WBackendManager::Engine WBackendManager::engine() const
+{
+    Q_D(const WBackendManager); return d->engine;
+}
+
+// NOTE: Switching the engine stops the playback.
+void WBackendManager::setEngine(Engine engine)
+{
+    Q_D(WBackendManager);
+
+#ifdef SK_NO_BACKENDFFMPEG
+    engine = EngineVlc;
+#endif
+
+    if (d->engine == engine) return;
+
+    d->engine = engine;
+
+    stop();
+
+    d->setBackend(d->createBackend());
+
+    emit engineChanged();
 }
 
 #endif // SK_NO_BACKENDMANAGER

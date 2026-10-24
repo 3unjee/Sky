@@ -75,6 +75,8 @@ public:
     void init();
 
 public: // Functions
+    WAbstractBackend * createBackend();
+
     void loadSources  (bool play);
     void reloadSources(bool play);
 
@@ -106,7 +108,7 @@ public: // Functions
     void clearReply();
     void clearMedia();
 
-    //void setBackend(WAbstractBackend * backendNew);
+    void setBackend(WAbstractBackend * backendNew);
 
     void setBackendInterface(WBackendInterface * backendNew);
 
@@ -145,6 +147,8 @@ public: // Slots
     void onOutputRemoved(int);
 
 public: // Variables
+    WBackendManager::Engine engine;
+
     QList<WBackendManagerItem> items;
 
     WBackendManagerItem * currentItem;

@@ -45,6 +45,7 @@ include(../Sk.pri)
 include(src/controllers/controllers.pri)
 include(src/media/media.pri)
 include(src/vlc/vlc.pri)
+include(src/ffmpeg/ffmpeg.pri)
 
 INCLUDEPATH += $$SK/include/SkCore \
                $$SK/include/SkCore/private \
@@ -89,6 +90,17 @@ win32:LIBS += -L$$SK/lib -llibvlc
 unix:!ios:!android:LIBS += -L$$SK/lib -lvlc
 
 android:LIBS += -L$$SK/lib/$$ABI -lvlc
+
+# NOTE: Our FFmpeg is for Qt 6, on the platforms configure.sh has a build for.
+contains(QT_MAJOR_VERSION, 6):exists($$SK/include/ffmpeg) {
+    QT += multimedia
+
+    INCLUDEPATH += $$SK/include/ffmpeg
+
+    LIBS += -L$$SK/lib -lavformat -lavcodec -lavfilter -lavutil -lswscale -lswresample
+} else {
+    DEFINES += SK_NO_FFMPEG
+}
 
 macx {
 CONFIG(debug, debug|release) {

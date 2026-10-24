@@ -16,6 +16,8 @@ Qt6_version="6.10.1"
 VLC3_version="3.0.23"
 VLC4_version="4.0.0"
 
+FFmpeg_version="N-127021-ge0c94b2d1c"
+
 libtorrent_version="2.0.11"
 
 Boost_version="1.86.0"
@@ -157,6 +159,8 @@ else
     VLC="$external/VLC/$VLC4_version"
 fi
 
+FFmpeg="$external/FFmpeg/$FFmpeg_version"
+
 libtorrent="$external/libtorrent/$libtorrent_version"
 
 Boost="$external/Boost/$Boost_version"
@@ -197,6 +201,11 @@ rm -rf include/Qt5
 # VLC
 
 rm -rf include/vlc
+
+#----------------------------------------------------------------------------------------------
+# FFmpeg
+
+rm -rf include/ffmpeg
 
 #----------------------------------------------------------------------------------------------
 # libtorrent
@@ -429,6 +438,28 @@ elif [ $1 = "android" ]; then
     cp -r "$VLC"/include/vlc include
 
     copyAndroid "$VLC" lib
+fi
+
+#--------------------------------------------------------------------------------------------------
+# FFmpeg
+#--------------------------------------------------------------------------------------------------
+
+# NOTE: Our FFmpeg is for Qt 6 on the platforms it has a build for, the others stay on VLC.
+if [ $qt = "qt6" -a -d "$FFmpeg" ]; then
+
+    echo "COPYING FFmpeg"
+
+    mkdir -p include/ffmpeg
+
+    cp -r "$FFmpeg"/include/* include/ffmpeg
+
+    if [ $os = "windows" ]; then
+
+        cp "$FFmpeg"/lib/*.lib   lib
+        cp "$FFmpeg"/lib/*.dll.a lib
+    else
+        cp "$FFmpeg"/lib/lib*.so* lib
+    fi
 fi
 
 #--------------------------------------------------------------------------------------------------

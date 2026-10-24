@@ -36,6 +36,13 @@ class SK_MEDIA_EXPORT WBackendManager : public WAbstractBackend
 {
     Q_OBJECT
 
+    Q_ENUMS(Engine)
+
+    Q_PROPERTY(Engine engine READ engine WRITE setEngine NOTIFY engineChanged)
+
+public: // Enums
+    enum Engine { EngineVlc, EngineFfmpeg };
+
 public:
     WBackendManager(QObject * parent = NULL);
 protected:
@@ -106,6 +113,13 @@ protected: // WAbstractBackend reimplementation
 
 protected: // Events
     /* virtual */ void timerEvent(QTimerEvent * event);
+
+signals:
+    void engineChanged();
+
+public: // Properties
+    Engine engine() const;
+    void   setEngine(Engine engine);
 
 private:
     W_DECLARE_PRIVATE(WBackendManager)
